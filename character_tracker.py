@@ -118,7 +118,11 @@ class CharacterData:
 class PoECharacterTracker:
     """Main character tracking class"""
     
-    def __init__(self, data_file: str = "tracked_characters_data.json"):
+    def __init__(self, data_file: str = None):
+        if data_file is None:
+            # Use the data directory if it exists, otherwise current directory
+            data_dir = "/app/data" if os.path.exists("/app/data") else "."
+            data_file = os.path.join(data_dir, "tracked_characters_data.json")
         self.rate_limiter = RateLimitTracker()
         self.data_file = data_file
         

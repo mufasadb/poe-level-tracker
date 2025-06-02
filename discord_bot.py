@@ -49,7 +49,9 @@ class PoETrackerBot(commands.Bot):
     def load_tracked_accounts(self):
         """Load tracked accounts from JSON file"""
         try:
-            accounts_file = "tracked_accounts.json"
+            # Use the data directory if it exists, otherwise current directory
+            data_dir = "/app/data" if os.path.exists("/app/data") else "."
+            accounts_file = os.path.join(data_dir, "tracked_accounts.json")
             if os.path.exists(accounts_file):
                 with open(accounts_file, 'r') as f:
                     data = json.load(f)
@@ -64,7 +66,9 @@ class PoETrackerBot(commands.Bot):
     def save_tracked_accounts(self):
         """Save tracked accounts to JSON file"""
         try:
-            accounts_file = "tracked_accounts.json"
+            # Use the data directory if it exists, otherwise current directory
+            data_dir = "/app/data" if os.path.exists("/app/data") else "."
+            accounts_file = os.path.join(data_dir, "tracked_accounts.json")
             data = {
                 'accounts': list(self.tracked_accounts),
                 'notification_channel_id': self.notification_channel_id
