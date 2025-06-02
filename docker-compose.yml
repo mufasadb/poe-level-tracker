@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   poe-tracker:
-    build: .
+    image: callmebeachy/poe-character-tracker:latest
     container_name: poe-character-tracker
     restart: unless-stopped
     
