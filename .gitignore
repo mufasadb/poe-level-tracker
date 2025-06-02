@@ -46,6 +46,7 @@ coverage.xml
 
 # Data files
 tracked_characters_data.json
+tracked_accounts.json
 
 # IDE
 .vscode/

@@ -7,7 +7,10 @@ services:
     restart: unless-stopped
     
     environment:
-      # Discord webhook URL - REQUIRED
+      # Discord Bot Token (RECOMMENDED - enables bot commands)
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      
+      # OR Discord webhook URL (LEGACY - for webhook-only mode)
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
       
       # Check interval in seconds (default: 300 = 5 minutes)
@@ -16,7 +19,7 @@ services:
       # Monitored leagues (comma-separated)
       - MONITORED_LEAGUES=${MONITORED_LEAGUES:-Standard,Hardcore}
       
-      # Tracked accounts (comma-separated with discriminators)
+      # Initial tracked accounts (optional - can also add via Discord commands)
       - TRACKED_ACCOUNTS=${TRACKED_ACCOUNTS}
       
       # Data file location

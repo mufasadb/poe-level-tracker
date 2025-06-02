@@ -1,33 +1,60 @@
 # Path of Exile Character Level Tracker
 
-A robust, automated Discord bot that monitors Path of Exile characters for level-ups using the official PoE API. When a monitored character levels up, the system announces the event in a designated Discord channel with proper rate limiting and error handling.
+A robust, automated Discord bot that monitors Path of Exile characters for level-ups using the official PoE API. Manage tracked accounts with Discord commands and get real-time notifications when characters level up!
 
 ## Features
 
-- **Real-time Level Monitoring**: Continuously tracks character levels across multiple accounts
-- **League-Aware Tracking**: Monitors characters in specific leagues (Standard, Hardcore, Challenge leagues, etc.)
-- **Discord Notifications**: Rich Discord webhook notifications for level-ups
-- **Rate Limit Compliance**: Respects PoE API rate limits with intelligent backoff strategies
-- **Persistent Storage**: Character data survives container restarts
-- **Docker Ready**: Easy deployment with Docker and Docker Compose
-- **Unraid Compatible**: Optimized for Unraid server deployment
-- **Comprehensive Logging**: Detailed logs for monitoring and troubleshooting
+- **🤖 Discord Bot Commands**: Add/remove accounts dynamically with `!track` commands
+- **📊 Real-time Level Monitoring**: Continuously tracks character levels across multiple accounts
+- **🏆 League-Aware Tracking**: Monitors characters in specific leagues (Standard, Hardcore, Challenge leagues, etc.)
+- **🎉 Rich Discord Notifications**: Beautiful embed notifications for level-ups
+- **⚡ Rate Limit Compliance**: Respects PoE API rate limits with intelligent backoff strategies
+- **💾 Persistent Storage**: Character data and tracked accounts survive container restarts
+- **🐳 Docker Ready**: Easy deployment with Docker and Docker Compose
+- **🖥️ Unraid Compatible**: Optimized for Unraid server deployment
+- **📝 Comprehensive Logging**: Detailed logs for monitoring and troubleshooting
 
 ## Requirements
 
 - Docker and Docker Compose
-- Discord webhook URL
+- Discord bot token (or webhook URL for legacy mode)
 - Path of Exile accounts with **public character profiles**
 
 ## Quick Start
 
-### 1. Setup Discord Webhook
+### 1. Create Discord Bot
 
-1. Create a Discord webhook in your server:
-   - Go to Server Settings → Integrations → Webhooks
-   - Click "New Webhook"
-   - Configure name and channel
-   - Copy the webhook URL
+1. **Create a Discord Application**:
+   - Go to https://discord.com/developers/applications
+   - Click "New Application"
+   - Give it a name like "PoE Level Tracker"
+
+2. **Create Bot**:
+   - Go to "Bot" section
+   - Click "Add Bot"
+   - Copy the bot token (keep this secret!)
+
+3. **Invite Bot to Server**:
+   - Go to "OAuth2" → "URL Generator"
+   - Select "bot" scope
+   - Select permissions: "Send Messages", "Use Slash Commands", "Embed Links"
+   - Copy the generated URL and visit it to invite the bot
+
+## Discord Bot Commands
+
+Once the bot is running, use these commands in Discord:
+
+```
+!track add AccountName#1234     - Add account to tracking
+!track remove AccountName#1234  - Remove account from tracking  
+!track list                     - List all tracked accounts
+!track channel                  - Set this channel for notifications
+!track status                   - Show tracking status
+!track test AccountName#1234    - Test if account is accessible
+
+!leagues                        - Show monitored leagues
+!ping                          - Check if bot is responsive
+```
 
 ### 2. Clone and Configure
 
@@ -47,8 +74,8 @@ nano .env
 Edit `.env` file:
 
 ```bash
-# Discord webhook URL - REQUIRED
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN
+# Discord Bot Token (RECOMMENDED)
+DISCORD_BOT_TOKEN=your_discord_bot_token_here
 
 # Check interval in seconds (default: 300 = 5 minutes)
 CHECK_INTERVAL=300
@@ -56,9 +83,11 @@ CHECK_INTERVAL=300
 # Monitored leagues (comma-separated)
 MONITORED_LEAGUES=Standard,Hardcore,Settlers
 
-# Account names to track (comma-separated with discriminators)
-TRACKED_ACCOUNTS=account1#1234,account2#5678
+# Optional: Initial accounts to track (can also add via Discord commands)
+# TRACKED_ACCOUNTS=account1#1234,account2#5678
 ```
+
+**Note**: With bot mode, you can add accounts dynamically using Discord commands instead of configuring them in the environment file!
 
 ### 4. Deploy with Docker Compose
 
@@ -72,6 +101,14 @@ docker-compose logs -f poe-tracker
 # Stop the tracker
 docker-compose down
 ```
+
+### 5. Setup Tracking
+
+1. **In Discord, run**: `!track channel` in the channel where you want notifications
+2. **Add accounts**: `!track add YourAccount#1234`
+3. **Verify**: `!track list` to see tracked accounts
+
+The bot will automatically start monitoring and send notifications when characters level up!
 
 ## Unraid Deployment
 
@@ -134,15 +171,25 @@ docker run -d \
 
 ## Configuration
 
+### Operation Modes
+
+**Bot Mode (Recommended)**: Use `DISCORD_BOT_TOKEN` for full Discord bot functionality with commands.
+
+**Webhook Mode (Legacy)**: Use `DISCORD_WEBHOOK_URL` for simple webhook notifications.
+
 ### Environment Variables
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `DISCORD_WEBHOOK_URL` | Yes | - | Discord webhook URL for notifications |
-| `TRACKED_ACCOUNTS` | Yes | - | Comma-separated account names with discriminators |
+| `DISCORD_BOT_TOKEN` | Yes* | - | Discord bot token (enables bot commands) |
+| `DISCORD_WEBHOOK_URL` | Yes* | - | Discord webhook URL (legacy mode only) |
 | `MONITORED_LEAGUES` | No | `Standard,Hardcore` | Comma-separated league names to monitor |
 | `CHECK_INTERVAL` | No | `300` | Check interval in seconds (minimum 60) |
+| `TRACKED_ACCOUNTS` | No** | - | Initial accounts (bot mode: optional, webhook mode: required) |
 | `DATA_FILE` | No | `/app/data/tracked_characters_data.json` | Path to persistent data file |
+
+*Either `DISCORD_BOT_TOKEN` or `DISCORD_WEBHOOK_URL` must be provided.
+**In bot mode, accounts can be managed via Discord commands.
 
 ### Account Name Format
 
