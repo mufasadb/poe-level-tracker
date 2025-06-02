@@ -2,6 +2,8 @@
 
 A robust, automated Discord bot that monitors Path of Exile characters for level-ups using the official PoE API. Manage tracked accounts with Discord commands and get real-time notifications when characters level up!
 
+[![Docker Hub](https://img.shields.io/docker/pulls/callmebeachy/poe-character-tracker)](https://hub.docker.com/r/callmebeachy/poe-character-tracker)
+
 ## Features
 
 - **🤖 Discord Bot Commands**: Add/remove accounts dynamically with `!track` commands
