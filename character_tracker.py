@@ -17,22 +17,90 @@ class RateLimitTracker:
     """Track and manage PoE API rate limits"""
     
     def __init__(self):
-        self.current_requests = 0
-        self.requests_per_minute = 0
-        self.requests_per_hour = 0
-        self.last_reset = time.time()
+        self.limits = {}  # window_seconds: (current_requests, max_requests)
+        self.last_request_time = 0
+        self.backoff_until = 0
+    
+    def parse_rate_limit_headers(self, headers: Dict[str, str]):
+        """Parse rate limit headers and update internal state"""
+        if 'X-Rate-Limit-Ip' in headers and 'X-Rate-Limit-Ip-State' in headers:
+            # Parse limits: "15:60:120,90:1800:600,180:7200:3600"
+            # Format: requests:window_seconds:max_requests
+            limits_str = headers['X-Rate-Limit-Ip']
+            state_str = headers['X-Rate-Limit-Ip-State']
+            
+            # Parse current state: "1:60:0,1:1800:0,1:7200:0"
+            # Format: current_requests:window_seconds:hits_in_window
+            state_parts = state_str.split(',')
+            
+            for state_part in state_parts:
+                try:
+                    current, window, hits = map(int, state_part.split(':'))
+                    self.limits[window] = (current, self._get_max_for_window(limits_str, window))
+                except ValueError:
+                    continue
+                    
+    def _get_max_for_window(self, limits_str: str, window: int) -> int:
+        """Extract max requests for a specific window from limits string"""
+        for limit_part in limits_str.split(','):
+            try:
+                requests, win_sec, max_req = map(int, limit_part.split(':'))
+                if win_sec == window:
+                    return max_req
+            except ValueError:
+                continue
+        return 0
     
     def update_from_headers(self, headers: Dict[str, str]):
         """Update rate limit info from API response headers"""
-        if 'X-Rate-Limit-Ip-State' in headers:
-            # Format: "1:60:0,1:1800:0,1:7200:0" (current:window:max for each window)
-            rate_info = headers['X-Rate-Limit-Ip-State']
-            print(f"Rate limit state: {rate_info}")
+        self.parse_rate_limit_headers(headers)
+        
+        if self.limits:
+            print(f"Rate limits: {self.limits}")
+            
+            # Check if we're close to any limits (80% threshold)
+            for window, (current, max_req) in self.limits.items():
+                if max_req > 0 and current / max_req >= 0.8:
+                    print(f"Warning: Close to rate limit for {window}s window: {current}/{max_req}")
     
     def can_make_request(self) -> bool:
         """Check if we can safely make another request"""
-        # For now, always return True - we'll implement proper throttling later
+        current_time = time.time()
+        
+        # Check if we're in a backoff period
+        if current_time < self.backoff_until:
+            return False
+        
+        # Check rate limits
+        for window, (current, max_req) in self.limits.items():
+            if max_req > 0 and current >= max_req:
+                print(f"Rate limit reached for {window}s window: {current}/{max_req}")
+                return False
+        
+        # Enforce minimum delay between requests (1 second)
+        if current_time - self.last_request_time < 1.0:
+            return False
+        
         return True
+    
+    def wait_if_needed(self):
+        """Wait if we need to respect rate limits"""
+        while not self.can_make_request():
+            time.sleep(1)
+    
+    def record_request(self):
+        """Record that we made a request"""
+        self.last_request_time = time.time()
+    
+    def handle_rate_limit_error(self, retry_after: int = None):
+        """Handle a 429 rate limit error"""
+        if retry_after:
+            self.backoff_until = time.time() + retry_after
+            print(f"Rate limited, backing off for {retry_after} seconds")
+        else:
+            # Default backoff
+            self.backoff_until = time.time() + 60
+            print("Rate limited, backing off for 60 seconds")
 
 
 class CharacterData:
@@ -76,15 +144,17 @@ class PoECharacterTracker:
         Returns:
             List of CharacterData objects, or None if failed
         """
-        if not self.rate_limiter.can_make_request():
-            print("Rate limit reached, skipping request")
-            return None
+        # Wait if rate limiting is needed
+        self.rate_limiter.wait_if_needed()
             
         url = "https://www.pathofexile.com/character-window/get-characters"
         params = {"accountName": account_name, "realm": realm}
         headers = {"User-Agent": "PoE-Character-Tracker/1.0"}
         
         try:
+            # Record that we're making a request
+            self.rate_limiter.record_request()
+            
             response = requests.get(url, params=params, headers=headers)
             self.rate_limiter.update_from_headers(response.headers)
             
@@ -109,6 +179,14 @@ class PoECharacterTracker:
                 return None
             elif response.status_code == 404:
                 print(f"Error: Account '{account_name}' not found")
+                return None
+            elif response.status_code == 429:
+                # Handle rate limiting
+                retry_after = response.headers.get('Retry-After')
+                if retry_after:
+                    self.rate_limiter.handle_rate_limit_error(int(retry_after))
+                else:
+                    self.rate_limiter.handle_rate_limit_error()
                 return None
             else:
                 print(f"Error: Unexpected status code {response.status_code}")

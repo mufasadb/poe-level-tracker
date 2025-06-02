@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  poe-tracker:
+    build: .
+    container_name: poe-character-tracker
+    restart: unless-stopped
+    
+    environment:
+      # Discord webhook URL - REQUIRED
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      
+      # Check interval in seconds (default: 300 = 5 minutes)
+      - CHECK_INTERVAL=${CHECK_INTERVAL:-300}
+      
+      # Monitored leagues (comma-separated)
+      - MONITORED_LEAGUES=${MONITORED_LEAGUES:-Standard,Hardcore}
+      
+      # Tracked accounts (comma-separated with discriminators)
+      - TRACKED_ACCOUNTS=${TRACKED_ACCOUNTS}
+      
+      # Data file location
+      - DATA_FILE=/app/data/tracked_characters_data.json
+    
+    volumes:
+      # Persistent storage for character data
+      - ./data:/app/data
+      
+      # Log files (optional)
+      - ./logs:/app/logs
+    
+    # Resource limits (adjust as needed)
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.1'
+        reservations:
+          memory: 64M
+          cpus: '0.05'
