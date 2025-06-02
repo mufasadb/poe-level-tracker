@@ -62,6 +62,7 @@ Once the bot is running, use these commands in Discord:
 # General
 !leagues                        - Show monitored leagues
 !ping                          - Check if bot is responsive
+!help                          - Show detailed help guide
 ```
 
 ### 2. Clone and Configure
@@ -117,6 +118,19 @@ docker-compose down
 3. **Verify**: `!track list` to see tracked accounts
 
 The bot will automatically start monitoring and send notifications when characters level up!
+
+## Smart Help System
+
+The bot has a smart help system that responds to natural language questions:
+
+```
+"How does this bot work?"           → YOU RANG?! Type !help for commands
+"How do I message the bot?"         → YOU RANG?! Type !help for commands  
+"What are the commands?"            → YOU RANG?! Type !help for commands
+"How do you use this?"              → YOU RANG?! Type !help for commands
+```
+
+Just ask naturally and the bot will guide you to the help system!
 
 ## Usage Examples
 

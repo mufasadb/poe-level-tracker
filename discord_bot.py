@@ -10,6 +10,7 @@ import json
 import os
 import asyncio
 import logging
+import re
 from typing import List, Dict, Set
 from character_tracker import PoECharacterTracker
 
@@ -103,6 +104,7 @@ class PoETrackerBot(commands.Bot):
                              "!characters AccountName#1234   - List all characters for account\n"
                              "!leagues                       - Show monitored leagues\n"
                              "!ping                          - Check bot responsiveness\n"
+                             "!help                          - Show detailed help\n"
                              "```")
                 return
             
@@ -163,6 +165,71 @@ class PoETrackerBot(commands.Bot):
                 return
             
             await self.handle_list_characters(ctx, account)
+        
+        @self.command(name='help')
+        async def help_command(ctx):
+            """Show comprehensive help information"""
+            embed = discord.Embed(
+                title="🤖 PoE Character Level Tracker - Help",
+                description="I monitor Path of Exile characters and notify when they level up!",
+                color=0xff6b35
+            )
+            
+            # Account Management
+            embed.add_field(
+                name="📋 Account Management", 
+                value="```\n"
+                      "!track add AccountName#1234    - Add account to tracking\n"
+                      "!track remove AccountName#1234 - Remove account\n"
+                      "!track list                    - List tracked accounts\n"
+                      "!track test AccountName#1234   - Test account access\n"
+                      "```",
+                inline=False
+            )
+            
+            # Setup Commands
+            embed.add_field(
+                name="⚙️ Setup Commands",
+                value="```\n"
+                      "!track channel                 - Set notification channel\n"
+                      "!track status                  - Show tracking status\n"
+                      "!leagues                       - Show monitored leagues\n"
+                      "```",
+                inline=False
+            )
+            
+            # Character Info
+            embed.add_field(
+                name="👤 Character Information",
+                value="```\n"
+                      "!highest AccountName#1234      - Show highest level character\n"
+                      "!characters AccountName#1234   - List all characters\n"
+                      "```",
+                inline=False
+            )
+            
+            # How it works
+            embed.add_field(
+                name="❓ How It Works",
+                value="1️⃣ Add PoE accounts to track with `!track add`\n"
+                      "2️⃣ Set notification channel with `!track channel`\n"
+                      "3️⃣ I check every 5 minutes for level-ups\n"
+                      "4️⃣ Get notified when characters level up!\n\n"
+                      "**Note:** PoE accounts must have PUBLIC character profiles!",
+                inline=False
+            )
+            
+            # Utility
+            embed.add_field(
+                name="🔧 Utility",
+                value="`!ping` - Check if I'm responsive\n"
+                      "`!help` - Show this help message",
+                inline=False
+            )
+            
+            embed.set_footer(text="💡 Tip: Use !track for quick command reference")
+            
+            await ctx.send(embed=embed)
     
     async def handle_add_account(self, ctx, account: str):
         """Handle adding an account to tracking"""
@@ -458,6 +525,70 @@ class PoETrackerBot(commands.Bot):
         except Exception as e:
             logger.error(f"Error listing characters for {account}: {e}")
             await ctx.send(f"❌ Error retrieving character data: {e}")
+    
+    def is_help_question(self, message_content: str) -> bool:
+        """Check if message is asking for help with the bot"""
+        # Normalize message: lowercase, remove extra spaces
+        content = re.sub(r'\s+', ' ', message_content.lower().strip())
+        
+        # Define patterns for help-seeking messages
+        help_patterns = [
+            # How does questions
+            r'how\s+do(?:es)?\s+(?:the\s+)?(?:this\s+)?bot\s+work',
+            r'how\s+do(?:es)?\s+(?:this\s+)?(?:it\s+)?work',
+            
+            # How to message/talk/use
+            r'how\s+(?:do\s+)?(?:i\s+|you\s+)?(?:message|msg|talk\s+to|contact|use|communicate\s+with)\s+(?:the\s+)?bot',
+            r'how\s+(?:do\s+)?(?:i\s+|you\s+)?(?:message|msg|talk\s+to|contact|use|communicate\s+with)\s+(?:this|it)',
+            
+            # Commands questions
+            r'what\s+(?:are\s+the\s+)?commands',
+            r'(?:show\s+|list\s+)?(?:bot\s+)?commands',
+            r'how\s+(?:do\s+)?(?:i\s+|you\s+)?(?:use|control)\s+(?:the\s+)?(?:this\s+)?bot',
+            
+            # Help requests
+            r'help\s+(?:me\s+)?(?:with\s+)?(?:the\s+)?(?:this\s+)?bot',
+            r'bot\s+help',
+            r'need\s+help',
+            
+            # What does questions
+            r'what\s+do(?:es)?\s+(?:the\s+)?(?:this\s+)?bot\s+do',
+            r'what\s+(?:is\s+)?(?:this\s+)?(?:for|about)',
+        ]
+        
+        # Check for mentions of the bot
+        bot_mentioned = any(word in content for word in ['bot', 'tracker', '@'])
+        
+        # Check if any pattern matches
+        for pattern in help_patterns:
+            if re.search(pattern, content):
+                return True
+        
+        # Additional simple keyword combinations
+        help_keywords = ['help', 'how', 'what', 'commands', 'use', 'work']
+        bot_keywords = ['bot', 'tracker', 'this', 'it']
+        
+        has_help_word = any(word in content for word in help_keywords)
+        has_bot_word = any(word in content for word in bot_keywords)
+        
+        return has_help_word and (has_bot_word or bot_mentioned)
+    
+    async def on_message(self, message):
+        """Handle incoming messages for auto-responses"""
+        # Ignore messages from bots
+        if message.author.bot:
+            return
+        
+        # Check for help questions (only if bot is mentioned or message contains bot keywords)
+        if (self.user in message.mentions or 
+            any(keyword in message.content.lower() for keyword in ['bot', 'tracker']) or
+            message.content.startswith('!')) and self.is_help_question(message.content):
+            
+            await message.reply("**YOU RANG?!** 📢\n\nType `!help` for the list of commands! 🤖")
+            return
+        
+        # Process commands normally
+        await self.process_commands(message)
     
     async def on_ready(self):
         """Called when bot is ready"""
