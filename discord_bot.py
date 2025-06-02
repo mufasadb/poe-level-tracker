@@ -31,7 +31,7 @@ class PoETrackerBot(commands.Bot):
         super().__init__(
             command_prefix='!',
             intents=intents,
-            help_command=commands.DefaultHelpCommand(no_category='Commands')
+            help_command=None  # Disable default help command so we can use our own
         )
         
         self.tracker = tracker
