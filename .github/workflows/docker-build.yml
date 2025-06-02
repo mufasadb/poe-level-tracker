@@ -30,6 +30,9 @@ jobs:
         username: ${{ env.DOCKER_HUB_USERNAME }}
         password: ${{ secrets.DOCKER_HUB_TOKEN }}
         
+    - name: Debug - Check username
+      run: echo "Username is ${{ env.DOCKER_HUB_USERNAME }}"
+        
     - name: Extract metadata
       id: meta
       uses: docker/metadata-action@v5
