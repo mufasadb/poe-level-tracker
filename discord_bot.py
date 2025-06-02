@@ -95,6 +95,11 @@ class PoETrackerBot(commands.Bot):
                              "!track channel                 - Set this channel for notifications\n"
                              "!track status                  - Show tracking status\n"
                              "!track test AccountName#1234   - Test if account is accessible\n"
+                             "\n"
+                             "!highest AccountName#1234      - Show highest level character\n"
+                             "!characters AccountName#1234   - List all characters for account\n"
+                             "!leagues                       - Show monitored leagues\n"
+                             "!ping                          - Check bot responsiveness\n"
                              "```")
                 return
             
@@ -129,6 +134,32 @@ class PoETrackerBot(commands.Bot):
             """Check if bot is responsive"""
             latency = round(self.latency * 1000)
             await ctx.send(f"🏓 Pong! Latency: {latency}ms")
+        
+        @self.command(name='highest')
+        async def highest_command(ctx, *, account: str = None):
+            """
+            Show the highest level character for an account
+            
+            Usage: !highest AccountName#1234
+            """
+            if not account:
+                await ctx.send("❌ Please provide an account name: `!highest AccountName#1234`")
+                return
+            
+            await self.handle_highest_character(ctx, account)
+        
+        @self.command(name='characters')
+        async def characters_command(ctx, *, account: str = None):
+            """
+            List all characters for an account
+            
+            Usage: !characters AccountName#1234
+            """
+            if not account:
+                await ctx.send("❌ Please provide an account name: `!characters AccountName#1234`")
+                return
+            
+            await self.handle_list_characters(ctx, account)
     
     async def handle_add_account(self, ctx, account: str):
         """Handle adding an account to tracking"""
@@ -287,6 +318,143 @@ class PoETrackerBot(commands.Bot):
         except Exception as e:
             logger.error(f"Error testing account {account}: {e}")
             await ctx.send(f"❌ Error testing account: {e}")
+    
+    async def handle_highest_character(self, ctx, account: str):
+        """Handle showing highest level character for an account"""
+        await ctx.send(f"🔍 Finding highest level character for `{account}`...")
+        
+        try:
+            characters = self.tracker.fetch_account_characters(account)
+            if characters is None:
+                await ctx.send(f"❌ Cannot access account `{account}`. Profile may be private or account name incorrect.")
+                return
+            
+            if not characters:
+                await ctx.send(f"❌ No characters found for account `{account}`.")
+                return
+            
+            # Filter by monitored leagues if specified
+            if self.monitored_leagues:
+                filtered_characters = [c for c in characters if c.league in self.monitored_leagues]
+                if not filtered_characters:
+                    await ctx.send(f"❌ No characters found in monitored leagues for `{account}`.\n"
+                                 f"Monitored leagues: {', '.join(self.monitored_leagues)}")
+                    return
+                characters = filtered_characters
+            
+            # Find highest level character
+            highest_char = max(characters, key=lambda c: c.level)
+            
+            embed = discord.Embed(
+                title="🏆 Highest Level Character",
+                description=f"**{highest_char.name}** is the highest level character for `{account}`",
+                color=0xffd700  # Gold color
+            )
+            embed.add_field(name="Character", value=highest_char.name, inline=True)
+            embed.add_field(name="Level", value=highest_char.level, inline=True)
+            embed.add_field(name="Class", value=highest_char.class_name, inline=True)
+            embed.add_field(name="League", value=highest_char.league, inline=True)
+            
+            # Show if there are other high-level characters
+            same_level_chars = [c for c in characters if c.level == highest_char.level]
+            if len(same_level_chars) > 1:
+                other_chars = [c.name for c in same_level_chars if c.name != highest_char.name]
+                embed.add_field(
+                    name="Also at Level " + str(highest_char.level), 
+                    value=", ".join(other_chars[:5]), 
+                    inline=False
+                )
+            
+            await ctx.send(embed=embed)
+            
+        except Exception as e:
+            logger.error(f"Error getting highest character for {account}: {e}")
+            await ctx.send(f"❌ Error retrieving character data: {e}")
+    
+    async def handle_list_characters(self, ctx, account: str):
+        """Handle listing all characters for an account"""
+        await ctx.send(f"🔍 Retrieving characters for `{account}`...")
+        
+        try:
+            characters = self.tracker.fetch_account_characters(account)
+            if characters is None:
+                await ctx.send(f"❌ Cannot access account `{account}`. Profile may be private or account name incorrect.")
+                return
+            
+            if not characters:
+                await ctx.send(f"❌ No characters found for account `{account}`.")
+                return
+            
+            # Sort characters by level (highest first)
+            characters.sort(key=lambda c: c.level, reverse=True)
+            
+            # Filter by monitored leagues if specified
+            if self.monitored_leagues:
+                monitored_chars = [c for c in characters if c.league in self.monitored_leagues]
+                other_chars = [c for c in characters if c.league not in self.monitored_leagues]
+            else:
+                monitored_chars = characters
+                other_chars = []
+            
+            embed = discord.Embed(
+                title="📋 Character List",
+                description=f"Characters for account: **{account}**",
+                color=0x0099ff
+            )
+            
+            # Show monitored league characters
+            if monitored_chars:
+                char_list = []
+                for char in monitored_chars[:15]:  # Limit to 15 to avoid embed limits
+                    char_list.append(f"• **{char.name}** - Level {char.level} {char.class_name} ({char.league})")
+                
+                field_name = "Monitored Leagues" if self.monitored_leagues else "All Characters"
+                embed.add_field(
+                    name=field_name, 
+                    value="\n".join(char_list), 
+                    inline=False
+                )
+                
+                if len(monitored_chars) > 15:
+                    embed.add_field(
+                        name="...", 
+                        value=f"And {len(monitored_chars) - 15} more characters", 
+                        inline=False
+                    )
+            
+            # Show other league characters (if any)
+            if other_chars and self.monitored_leagues:
+                other_list = []
+                for char in other_chars[:10]:  # Limit to 10
+                    other_list.append(f"• {char.name} - Level {char.level} {char.class_name} ({char.league})")
+                
+                embed.add_field(
+                    name="Other Leagues (Not Monitored)", 
+                    value="\n".join(other_list), 
+                    inline=False
+                )
+                
+                if len(other_chars) > 10:
+                    embed.add_field(
+                        name="...", 
+                        value=f"And {len(other_chars) - 10} more in other leagues", 
+                        inline=False
+                    )
+            
+            # Add summary
+            total_chars = len(characters)
+            monitored_count = len(monitored_chars) if self.monitored_leagues else total_chars
+            embed.add_field(
+                name="📊 Summary", 
+                value=f"Total: {total_chars} characters, Monitored: {monitored_count}", 
+                inline=False
+            )
+            
+            await ctx.send(embed=embed)
+            
+        except Exception as e:
+            logger.error(f"Error listing characters for {account}: {e}")
+            await ctx.send(f"❌ Error retrieving character data: {e}")
     
     async def on_ready(self):
         """Called when bot is ready"""

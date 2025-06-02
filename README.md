@@ -45,6 +45,7 @@ A robust, automated Discord bot that monitors Path of Exile characters for level
 Once the bot is running, use these commands in Discord:
 
 ```
+# Account Management
 !track add AccountName#1234     - Add account to tracking
 !track remove AccountName#1234  - Remove account from tracking  
 !track list                     - List all tracked accounts
@@ -52,6 +53,11 @@ Once the bot is running, use these commands in Discord:
 !track status                   - Show tracking status
 !track test AccountName#1234    - Test if account is accessible
 
+# Character Information
+!highest AccountName#1234       - Show highest level character
+!characters AccountName#1234    - List all characters for account
+
+# General
 !leagues                        - Show monitored leagues
 !ping                          - Check if bot is responsive
 ```
@@ -109,6 +115,39 @@ docker-compose down
 3. **Verify**: `!track list` to see tracked accounts
 
 The bot will automatically start monitoring and send notifications when characters level up!
+
+## Usage Examples
+
+### Character Information Commands
+
+```
+# See the highest level character for an account
+!highest dtmhawk#4430
+> 🏆 beachyPFUbers - Level 99 Pathfinder (Standard)
+
+# List all characters for an account  
+!characters dtmhawk#4430
+> Shows all characters sorted by level, grouped by monitored/other leagues
+
+# Test if an account is accessible
+!track test dtmhawk#4430
+> ✅ Account accessible, shows sample characters
+```
+
+### Account Management
+
+```
+# Add accounts to track
+!track add dtmhawk#4430
+!track add friend1#5678
+
+# Set notification channel
+!track channel
+
+# Check what's being tracked
+!track list
+!track status
+```
 
 ## Unraid Deployment
 
