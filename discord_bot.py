@@ -20,9 +20,12 @@ class PoETrackerBot(commands.Bot):
     """Discord bot for managing PoE character tracking"""
     
     def __init__(self, tracker: PoECharacterTracker, monitored_leagues: List[str], check_interval: int = 300):
-        # Setup bot with proper intents
+        # Setup bot with minimal required intents
         intents = discord.Intents.default()
-        intents.message_content = True
+        intents.message_content = True  # Required for prefix commands
+        # Disable unnecessary intents
+        intents.presences = False
+        intents.members = False
         
         super().__init__(
             command_prefix='!',
