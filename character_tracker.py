@@ -10,8 +10,6 @@ import time
 import os
 from typing import Dict, List, Optional, Tuple
 
-from discord_webhook import DiscordWebhook
-
 
 class RateLimitTracker:
     """Track and manage PoE API rate limits"""
@@ -120,15 +118,12 @@ class CharacterData:
 class PoECharacterTracker:
     """Main character tracking class"""
     
-    def __init__(self, discord_webhook_url: str = None, data_file: str = "tracked_characters_data.json"):
+    def __init__(self, data_file: str = "tracked_characters_data.json"):
         self.rate_limiter = RateLimitTracker()
         self.data_file = data_file
         
         # Storage format: {character_name: {league: {level: int, last_updated: timestamp}}}
         self.character_data: Dict[str, Dict[str, Dict[str, any]]] = {}
-        
-        # Discord integration
-        self.discord = DiscordWebhook(discord_webhook_url) if discord_webhook_url else None
         
         # Load existing data
         self.load_character_data()
@@ -264,11 +259,6 @@ class PoECharacterTracker:
         stored_level = self.character_data[char_name][league]['level']
         if current_level > stored_level:
             print(f"LEVEL UP! {char_name} ({league}): Level {stored_level} -> {current_level}")
-            
-            # Send Discord notification if webhook is configured
-            if self.discord:
-                self.discord.send_level_up_notification(char_name, league, stored_level, current_level)
-            
             self.store_character_data(character)  # Update stored data
             return True
         
@@ -325,9 +315,7 @@ class PoECharacterTracker:
 
 def main():
     """Test the character tracker with level-up detection"""
-    # Get Discord webhook URL from environment variable
-    webhook_url = os.getenv('DISCORD_WEBHOOK_URL')
-    tracker = PoECharacterTracker(discord_webhook_url=webhook_url)
+    tracker = PoECharacterTracker()
     
     # Test with known public account
     test_account = "dtmhawk#4430"

@@ -17,7 +17,7 @@ A robust, automated Discord bot that monitors Path of Exile characters for level
 ## Requirements
 
 - Docker and Docker Compose
-- Discord bot token (or webhook URL for legacy mode)
+- Discord bot token
 - Path of Exile accounts with **public character profiles**
 
 ## Quick Start
@@ -74,7 +74,7 @@ nano .env
 Edit `.env` file:
 
 ```bash
-# Discord Bot Token (RECOMMENDED)
+# Discord Bot Token (REQUIRED)
 DISCORD_BOT_TOKEN=your_discord_bot_token_here
 
 # Check interval in seconds (default: 300 = 5 minutes)
@@ -87,7 +87,7 @@ MONITORED_LEAGUES=Standard,Hardcore,Settlers
 # TRACKED_ACCOUNTS=account1#1234,account2#5678
 ```
 
-**Note**: With bot mode, you can add accounts dynamically using Discord commands instead of configuring them in the environment file!
+**Note**: You can add accounts dynamically using Discord commands instead of configuring them here!
 
 ### 4. Deploy with Docker Compose
 
@@ -171,25 +171,15 @@ docker run -d \
 
 ## Configuration
 
-### Operation Modes
-
-**Bot Mode (Recommended)**: Use `DISCORD_BOT_TOKEN` for full Discord bot functionality with commands.
-
-**Webhook Mode (Legacy)**: Use `DISCORD_WEBHOOK_URL` for simple webhook notifications.
-
 ### Environment Variables
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `DISCORD_BOT_TOKEN` | Yes* | - | Discord bot token (enables bot commands) |
-| `DISCORD_WEBHOOK_URL` | Yes* | - | Discord webhook URL (legacy mode only) |
+| `DISCORD_BOT_TOKEN` | Yes | - | Discord bot token (required) |
 | `MONITORED_LEAGUES` | No | `Standard,Hardcore` | Comma-separated league names to monitor |
 | `CHECK_INTERVAL` | No | `300` | Check interval in seconds (minimum 60) |
-| `TRACKED_ACCOUNTS` | No** | - | Initial accounts (bot mode: optional, webhook mode: required) |
+| `TRACKED_ACCOUNTS` | No | - | Initial accounts (optional - can use Discord commands) |
 | `DATA_FILE` | No | `/app/data/tracked_characters_data.json` | Path to persistent data file |
-
-*Either `DISCORD_BOT_TOKEN` or `DISCORD_WEBHOOK_URL` must be provided.
-**In bot mode, accounts can be managed via Discord commands.
 
 ### Account Name Format
 
