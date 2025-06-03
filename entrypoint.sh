@@ -4,19 +4,25 @@
 PUID=${PUID:-1000}
 PGID=${PGID:-1000}
 
-# Create group if it doesn't exist
-if ! getent group poe-tracker > /dev/null 2>&1; then
+# Get existing group name for the PGID, or create new one
+GROUPNAME=$(getent group $PGID | cut -d: -f1)
+if [ -z "$GROUPNAME" ]; then
     groupadd -g $PGID poe-tracker
+    GROUPNAME="poe-tracker"
 fi
 
-# Create user if it doesn't exist
-if ! id poe-tracker > /dev/null 2>&1; then
+# Get existing user name for the PUID, or create new one
+USERNAME=$(getent passwd $PUID | cut -d: -f1)
+if [ -z "$USERNAME" ]; then
     useradd -u $PUID -g $PGID -m -s /bin/bash poe-tracker
+    USERNAME="poe-tracker"
 fi
 
 # Ensure data directory exists and has correct permissions
 mkdir -p /app/data
-chown -R poe-tracker:poe-tracker /app
 
-# Switch to the poe-tracker user and run the command
-exec gosu poe-tracker "$@"
+# Set ownership using numeric IDs to avoid name conflicts
+chown -R $PUID:$PGID /app
+
+# Switch to the user and run the command
+exec gosu $PUID:$PGID "$@"

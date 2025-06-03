@@ -13,12 +13,15 @@ from typing import List
 from character_tracker import PoECharacterTracker
 from discord_bot import PoETrackerBot
 
-# Configure logging
+# Configure logging with proper path
+log_dir = "/app/data" if os.path.exists("/app/data") else "."
+log_file = os.path.join(log_dir, "poe_tracker.log")
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('poe_tracker.log'),
+        logging.FileHandler(log_file),
         logging.StreamHandler(sys.stdout)
     ]
 )
