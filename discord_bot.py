@@ -46,6 +46,34 @@ class PoETrackerBot(commands.Bot):
         # Add commands
         self.add_commands()
     
+    async def send_ephemeral_response(self, ctx, content=None, embed=None, delete_after=10):
+        """Send a response that only the user can see (by DM) and optionally in channel briefly"""
+        try:
+            # Send DM to user
+            if content:
+                await ctx.author.send(content)
+            elif embed:
+                await ctx.author.send(embed=embed)
+            
+            # Send brief confirmation in channel
+            confirmation = await ctx.send(f"📬 {ctx.author.mention} Check your DMs!")
+            await confirmation.delete(delay=3)  # Delete after 3 seconds
+            
+        except discord.errors.Forbidden:
+            # User has DMs disabled, send in channel but delete quickly
+            if content:
+                response = await ctx.send(f"{ctx.author.mention}\n{content}")
+            elif embed:
+                response = await ctx.send(f"{ctx.author.mention}", embed=embed)
+            await response.delete(delay=delete_after)
+    
+    async def send_public_response(self, ctx, content=None, embed=None):
+        """Send a normal public response (for notifications, level-ups, etc.)"""
+        if content:
+            await ctx.send(content)
+        elif embed:
+            await ctx.send(embed=embed)
+    
     def load_tracked_accounts(self):
         """Load tracked accounts from JSON file"""
         try:
@@ -233,7 +261,7 @@ class PoETrackerBot(commands.Bot):
             
             embed.set_footer(text="💡 Tip: Use !track for quick command reference")
             
-            await ctx.send(embed=embed)
+            await self.send_ephemeral_response(ctx, embed=embed)
     
     async def handle_add_account(self, ctx, account: str):
         """Handle adding an account to tracking"""
@@ -439,11 +467,11 @@ class PoETrackerBot(commands.Bot):
                     inline=False
                 )
             
-            await ctx.send(embed=embed)
+            await self.send_ephemeral_response(ctx, embed=embed)
             
         except Exception as e:
             logger.error(f"Error getting highest character for {account}: {e}")
-            await ctx.send(f"❌ Error retrieving character data: {e}")
+            await self.send_ephemeral_response(ctx, content=f"❌ Error retrieving character data: {e}")
     
     async def handle_list_characters(self, ctx, account: str):
         """Handle listing all characters for an account"""
@@ -524,74 +552,35 @@ class PoETrackerBot(commands.Bot):
                 inline=False
             )
             
-            await ctx.send(embed=embed)
+            await self.send_ephemeral_response(ctx, embed=embed)
             
         except Exception as e:
             logger.error(f"Error listing characters for {account}: {e}")
-            await ctx.send(f"❌ Error retrieving character data: {e}")
+            await self.send_ephemeral_response(ctx, content=f"❌ Error retrieving character data: {e}")
     
-    def is_help_question(self, message_content: str) -> bool:
-        """Check if message is asking for help with the bot"""
-        # Normalize message: lowercase, remove extra spaces
-        content = re.sub(r'\s+', ' ', message_content.lower().strip())
-        
-        # Define patterns for help-seeking messages
-        help_patterns = [
-            # How does questions
-            r'how\s+do(?:es)?\s+(?:the\s+)?(?:this\s+)?bot\s+work',
-            r'how\s+do(?:es)?\s+(?:this\s+)?(?:it\s+)?work',
-            
-            # How to message/talk/use
-            r'how\s+(?:do\s+)?(?:i\s+|you\s+)?(?:message|msg|talk\s+to|contact|use|communicate\s+with)\s+(?:the\s+)?bot',
-            r'how\s+(?:do\s+)?(?:i\s+|you\s+)?(?:message|msg|talk\s+to|contact|use|communicate\s+with)\s+(?:this|it)',
-            
-            # Commands questions
-            r'what\s+(?:are\s+the\s+)?commands',
-            r'(?:show\s+|list\s+)?(?:bot\s+)?commands',
-            r'how\s+(?:do\s+)?(?:i\s+|you\s+)?(?:use|control)\s+(?:the\s+)?(?:this\s+)?bot',
-            
-            # Help requests
-            r'help\s+(?:me\s+)?(?:with\s+)?(?:the\s+)?(?:this\s+)?bot',
-            r'bot\s+help',
-            r'need\s+help',
-            
-            # What does questions
-            r'what\s+do(?:es)?\s+(?:the\s+)?(?:this\s+)?bot\s+do',
-            r'what\s+(?:is\s+)?(?:this\s+)?(?:for|about)',
-        ]
-        
-        # Check for mentions of the bot
-        bot_mentioned = any(word in content for word in ['bot', 'tracker', '@'])
-        
-        # Check if any pattern matches
-        for pattern in help_patterns:
-            if re.search(pattern, content):
-                return True
-        
-        # Additional simple keyword combinations
-        help_keywords = ['help', 'how', 'what', 'commands', 'use', 'work']
-        bot_keywords = ['bot', 'tracker', 'this', 'it']
-        
-        has_help_word = any(word in content for word in help_keywords)
-        has_bot_word = any(word in content for word in bot_keywords)
-        
-        return has_help_word and (has_bot_word or bot_mentioned)
     
     async def on_message(self, message):
-        """Handle incoming messages for auto-responses"""
+        """Handle incoming messages"""
         # Ignore messages from bots
         if message.author.bot:
             return
         
-        # Check for help questions (only if bot is mentioned or message contains bot keywords)
-        if (self.user in message.mentions or 
-            any(keyword in message.content.lower() for keyword in ['bot', 'tracker']) or
-            message.content.startswith('!')) and self.is_help_question(message.content):
-            
-            await message.reply("**YOU RANG?!** 📢\n\nType `!help` for the list of commands! 🤖")
+        # Delete user command messages after processing (keep chat clean)
+        if message.content.startswith('!'):
+            try:
+                # Process the command first
+                await self.process_commands(message)
+                # Then delete the user's command message
+                await message.delete()
+            except discord.errors.NotFound:
+                # Message was already deleted
+                pass
+            except discord.errors.Forbidden:
+                # Bot doesn't have permission to delete messages
+                await self.process_commands(message)
             return
         
-        # Process commands normally
+        # Process non-command messages normally
         await self.process_commands(message)
     
     async def on_ready(self):

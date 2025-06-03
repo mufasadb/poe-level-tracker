@@ -119,18 +119,11 @@ docker-compose down
 
 The bot will automatically start monitoring and send notifications when characters level up!
 
-## Smart Help System
+## Clean Chat Experience
 
-The bot has a smart help system that responds to natural language questions:
-
-```
-"How does this bot work?"           → YOU RANG?! Type !help for commands
-"How do I message the bot?"         → YOU RANG?! Type !help for commands  
-"What are the commands?"            → YOU RANG?! Type !help for commands
-"How do you use this?"              → YOU RANG?! Type !help for commands
-```
-
-Just ask naturally and the bot will guide you to the help system!
+- **🗑️ Auto-delete commands**: User commands are automatically deleted to keep chat clean
+- **📬 Private responses**: Character info and help sent via DM when possible  
+- **⚡ Quick cleanup**: Brief confirmations that auto-delete
 
 ## Usage Examples
 
