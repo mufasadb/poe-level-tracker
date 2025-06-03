@@ -98,6 +98,8 @@ When the template is added to Community Applications:
 | `CHECK_INTERVAL` | No | `300` | Check interval in seconds |
 | `MONITORED_LEAGUES` | No | `Standard,Hardcore` | Comma-separated leagues |
 | `TRACKED_ACCOUNTS` | No | - | Initial accounts (optional) |
+| `PUID` | No | `1000` | User ID for file permissions (Unraid: use `99`) |
+| `PGID` | No | `1000` | Group ID for file permissions (Unraid: use `100`) |
 | `DATA_FILE` | No | `/app/data/tracked_characters_data.json` | Data file location |
 
 ## Volume Mounts
