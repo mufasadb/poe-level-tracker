@@ -121,9 +121,9 @@ The bot will automatically start monitoring and send notifications when characte
 
 ## Clean Chat Experience
 
-- **🗑️ Auto-delete commands**: User commands are automatically deleted to keep chat clean
-- **📬 Private responses**: Character info and help sent via DM when possible  
-- **⚡ Quick cleanup**: Brief confirmations that auto-delete
+- **🧹 Help spam prevention**: Only keeps the most recent !help request/response pair
+- **💬 Natural conversation flow**: Commands and responses stay visible
+- **⚡ Smart cleanup**: Removes old help messages to prevent flooding
 
 ## Usage Examples
 

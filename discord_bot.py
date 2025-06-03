@@ -45,34 +45,43 @@ class PoETrackerBot(commands.Bot):
         
         # Add commands
         self.add_commands()
+        
+        # Track help messages to prevent spam
+        self.help_messages = {}  # {channel_id: [(user_message_id, bot_message_id), ...]}
     
-    async def send_ephemeral_response(self, ctx, content=None, embed=None, delete_after=10):
-        """Send a response that only the user can see (by DM) and optionally in channel briefly"""
+    async def manage_help_spam(self, channel_id, user_message_id, bot_message_id):
+        """Manage help message spam by keeping only the most recent pair"""
         try:
-            # Send DM to user
-            if content:
-                await ctx.author.send(content)
-            elif embed:
-                await ctx.author.send(embed=embed)
+            # Initialize channel tracking if needed
+            if channel_id not in self.help_messages:
+                self.help_messages[channel_id] = []
             
-            # Send brief confirmation in channel
-            confirmation = await ctx.send(f"📬 {ctx.author.mention} Check your DMs!")
-            await confirmation.delete(delay=3)  # Delete after 3 seconds
+            # Add the new message pair
+            self.help_messages[channel_id].append((user_message_id, bot_message_id))
             
-        except discord.errors.Forbidden:
-            # User has DMs disabled, send in channel but delete quickly
-            if content:
-                response = await ctx.send(f"{ctx.author.mention}\n{content}")
-            elif embed:
-                response = await ctx.send(f"{ctx.author.mention}", embed=embed)
-            await response.delete(delay=delete_after)
-    
-    async def send_public_response(self, ctx, content=None, embed=None):
-        """Send a normal public response (for notifications, level-ups, etc.)"""
-        if content:
-            await ctx.send(content)
-        elif embed:
-            await ctx.send(embed=embed)
+            # If we have more than 1 pair, delete the older ones
+            while len(self.help_messages[channel_id]) > 1:
+                old_user_id, old_bot_id = self.help_messages[channel_id].pop(0)
+                
+                # Try to delete old messages
+                channel = self.get_channel(channel_id)
+                if channel:
+                    try:
+                        # Delete old user command
+                        old_user_msg = await channel.fetch_message(old_user_id)
+                        await old_user_msg.delete()
+                    except (discord.errors.NotFound, discord.errors.Forbidden):
+                        pass  # Message already deleted or no permission
+                    
+                    try:
+                        # Delete old bot response
+                        old_bot_msg = await channel.fetch_message(old_bot_id)
+                        await old_bot_msg.delete()
+                    except (discord.errors.NotFound, discord.errors.Forbidden):
+                        pass  # Message already deleted or no permission
+                        
+        except Exception as e:
+            logger.error(f"Error managing help spam: {e}")
     
     def load_tracked_accounts(self):
         """Load tracked accounts from JSON file"""
@@ -261,7 +270,11 @@ class PoETrackerBot(commands.Bot):
             
             embed.set_footer(text="💡 Tip: Use !track for quick command reference")
             
-            await self.send_ephemeral_response(ctx, embed=embed)
+            # Send the help response
+            bot_message = await ctx.send(embed=embed)
+            
+            # Manage help message spam - keep only the most recent pair
+            await self.manage_help_spam(ctx.channel.id, ctx.message.id, bot_message.id)
     
     async def handle_add_account(self, ctx, account: str):
         """Handle adding an account to tracking"""
@@ -467,11 +480,11 @@ class PoETrackerBot(commands.Bot):
                     inline=False
                 )
             
-            await self.send_ephemeral_response(ctx, embed=embed)
+            await ctx.send(embed=embed)
             
         except Exception as e:
             logger.error(f"Error getting highest character for {account}: {e}")
-            await self.send_ephemeral_response(ctx, content=f"❌ Error retrieving character data: {e}")
+            await ctx.send(f"❌ Error retrieving character data: {e}")
     
     async def handle_list_characters(self, ctx, account: str):
         """Handle listing all characters for an account"""
@@ -552,11 +565,11 @@ class PoETrackerBot(commands.Bot):
                 inline=False
             )
             
-            await self.send_ephemeral_response(ctx, embed=embed)
+            await ctx.send(embed=embed)
             
         except Exception as e:
             logger.error(f"Error listing characters for {account}: {e}")
-            await self.send_ephemeral_response(ctx, content=f"❌ Error retrieving character data: {e}")
+            await ctx.send(f"❌ Error retrieving character data: {e}")
     
     
     async def on_message(self, message):
@@ -565,22 +578,7 @@ class PoETrackerBot(commands.Bot):
         if message.author.bot:
             return
         
-        # Delete user command messages after processing (keep chat clean)
-        if message.content.startswith('!'):
-            try:
-                # Process the command first
-                await self.process_commands(message)
-                # Then delete the user's command message
-                await message.delete()
-            except discord.errors.NotFound:
-                # Message was already deleted
-                pass
-            except discord.errors.Forbidden:
-                # Bot doesn't have permission to delete messages
-                await self.process_commands(message)
-            return
-        
-        # Process non-command messages normally
+        # Process all messages normally
         await self.process_commands(message)
     
     async def on_ready(self):
